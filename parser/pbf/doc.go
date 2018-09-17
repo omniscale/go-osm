@@ -1,6 +1,6 @@
 /*
-Package pbf provides a parser for OSM PBF files.
+Package pbf provides an efficient parser for OpenStreetMap PBF files.
 
-The subpackage osmpbf contains the generated code for the OSM .proto files.
+Files are parsed in parallel and nodes, ways, relations passed back in blocks via channels.
 */
 package pbf

@@ -4,22 +4,16 @@ import (
 	"bytes"
 	"compress/zlib"
 	structs "encoding/binary"
-	"errors"
 	"fmt"
 	"io"
 	"log"
-	"os"
 	"time"
+
+	"github.com/pkg/errors"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/omniscale/go-osm/parser/pbf/internal/osmpbf"
 )
-
-type block struct {
-	filename string
-	offset   int64
-	size     int32
-}
 
 type parserError struct {
 	message       string
@@ -36,67 +30,54 @@ func newParserError(message string, err error) *parserError {
 
 var supportedFeatured = map[string]bool{"OsmSchema-V0.6": true, "DenseNodes": true}
 
-func readBlobData(pos block) ([]byte, error) {
-	file, err := os.Open(pos.filename)
-	if err != nil {
-		return nil, newParserError("file open", err)
-	}
-	defer file.Close()
+// decodeRawBlob decodes Blob PBF messages and returns either the raw bytes or
+// the uncompressed zlib_data bytes. The result can contain encoded HeaderBlock
+// or PrimitiveBlock PBF messages.
+func decodeRawBlob(raw []byte) ([]byte, error) {
+	blob := &osmpbf.Blob{}
 
-	var blob = &osmpbf.Blob{}
-
-	blobData := make([]byte, pos.size)
-	if _, err := file.Seek(pos.offset, 0); err != nil {
-		return nil, err
-	}
-	if n, err := io.ReadFull(file, blobData); n != int(pos.size) || err != nil {
-		return nil, newParserError("reading blob data", err)
-	}
-	err = proto.Unmarshal(blobData, blob)
+	err := proto.Unmarshal(raw, blob)
 	if err != nil {
 		return nil, newParserError("unmarshaling blob", err)
 	}
 
 	// pbf contains (uncompressed) raw or zlibdata
-	raw := blob.GetRaw()
-	if raw == nil {
+	b := blob.GetRaw()
+	if b == nil {
 		buf := bytes.NewBuffer(blob.GetZlibData())
 		r, err := zlib.NewReader(buf)
 		if err != nil {
 			return nil, newParserError("zlib error", err)
 		}
-		raw = make([]byte, blob.GetRawSize())
-		_, err = io.ReadFull(r, raw)
+		b = make([]byte, blob.GetRawSize())
+		_, err = io.ReadFull(r, b)
 		if err != nil {
 			return nil, newParserError("zlib read error", err)
 		}
 	}
-	return raw, nil
+	return b, nil
 }
 
-func readPrimitiveBlock(pos block) *osmpbf.PrimitiveBlock {
-	raw, err := readBlobData(pos)
+func decodePrimitiveBlock(blob []byte) (*osmpbf.PrimitiveBlock, error) {
+	b, err := decodeRawBlob(blob)
 	if err != nil {
 		log.Panic(err)
 	}
 	block := &osmpbf.PrimitiveBlock{}
-	err = proto.Unmarshal(raw, block)
-	if err != nil {
-		log.Panic("unmarshaling error: ", err)
+	if err = proto.Unmarshal(b, block); err != nil {
+		return nil, errors.Wrap(err, "unmarshaling PrimitiveBlock")
 	}
-
-	return block
+	return block, nil
 }
 
-func readAndParseHeaderBlock(pos block) (*Header, error) {
-	raw, err := readBlobData(pos)
+func decodeHeaderBlock(blob []byte) (*Header, error) {
+	b, err := decodeRawBlob(blob)
 	if err != nil {
 		return nil, err
 	}
 
 	header := &osmpbf.HeaderBlock{}
-	err = proto.Unmarshal(raw, header)
-	if err != nil {
+	if err := proto.Unmarshal(b, header); err != nil {
 		return nil, err
 	}
 
@@ -115,102 +96,72 @@ func readAndParseHeaderBlock(pos block) (*Header, error) {
 	return result, nil
 }
 
-type pbf struct {
-	file     *os.File
-	filename string
-	offset   int64
-	header   *Header
-}
-
 type Header struct {
 	Time     time.Time
 	Sequence int64
-	Filename string
 
 	RequiredFeatures []string
 	OptionalFeatures []string
 }
 
-func open(filename string) (f *pbf, err error) {
-	file, err := os.Open(filename)
+func parseHeader(r io.Reader) (*Header, error) {
+	blockHeader, data, err := nextBlock(r)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "reading header")
 	}
-	f = &pbf{filename: filename, file: file}
-	err = f.parseHeader()
+	if blockHeader.GetType() != "OSMHeader" {
+		return nil, errors.New("invalid block type, expected OSMHeader, got " + blockHeader.GetType())
+	}
+	header, err := decodeHeaderBlock(data)
+	return header, err
+}
+
+func nextBlock(r io.Reader) (*osmpbf.BlobHeader, []byte, error) {
+	header, err := nextBlobHeader(r)
+	if err == io.EOF {
+		return nil, nil, err
+	}
 	if err != nil {
-		file.Close()
-		return nil, err
+		return nil, nil, errors.Wrap(err, "reading next block header")
 	}
-	return f, nil
-}
-
-func (pbf *pbf) close() error {
-	return pbf.file.Close()
-}
-
-func (pbf *pbf) parseHeader() error {
-	offset, size, header := pbf.nextBlock()
-	if header.GetType() != "OSMHeader" {
-		panic("invalid block type, expected OSMHeader, got " + header.GetType())
-	}
-	var err error
-	pbf.header, err = readAndParseHeaderBlock(block{pbf.filename, offset, size})
-	pbf.header.Filename = pbf.filename
-	return err
-}
-
-func (pbf *pbf) nextBlock() (offset int64, size int32, header *osmpbf.BlobHeader) {
-	header = pbf.nextBlobHeader()
-	size = header.GetDatasize()
-	offset = pbf.offset
-
-	pbf.offset += int64(size)
-	pbf.file.Seek(pbf.offset, 0)
-	return offset, size, header
-}
-
-func (pbf *pbf) BlockPositions() (positions chan block) {
-	positions = make(chan block, 8)
-	go func() {
-		for {
-			offset, size, header := pbf.nextBlock()
-			if size == 0 {
-				close(positions)
-				pbf.close()
-				return
-			}
-			if header.GetType() != "OSMData" {
-				panic("invalid block type, expected OSMData, got " + header.GetType())
-			}
-			positions <- block{pbf.filename, offset, size}
-		}
-	}()
-	return
-}
-
-func (pbf *pbf) nextBlobHeaderSize() (size int32) {
-	pbf.offset += 4
-	structs.Read(pbf.file, structs.BigEndian, &size)
-	return
-}
-
-func (pbf *pbf) nextBlobHeader() *osmpbf.BlobHeader {
-	var blobHeader = &osmpbf.BlobHeader{}
-
-	size := pbf.nextBlobHeaderSize()
-	if size == 0 {
-		return blobHeader
-	}
+	size := header.GetDatasize()
 
 	data := make([]byte, size)
-	io.ReadFull(pbf.file, data)
-
-	err := proto.Unmarshal(data, blobHeader)
+	n, err := io.ReadFull(r, data)
 	if err != nil {
-		log.Fatal("unmarshaling error (header): ", err)
+		return nil, nil, errors.Wrap(err, "reading next block")
+	}
+	if n != int(size) {
+		return nil, nil, errors.Errorf("reading next block, only got %d bytes instead of %d", n, size)
+	}
+	return header, data, nil
+}
+
+func nextBlobHeader(r io.Reader) (*osmpbf.BlobHeader, error) {
+	var size int32
+	err := structs.Read(r, structs.BigEndian, &size)
+	if err == io.EOF {
+		return nil, err
+	}
+	if err != nil {
+		return nil, errors.Wrap(err, "reading header size")
 	}
 
-	pbf.offset += int64(size)
-	return blobHeader
+	var blobHeader = &osmpbf.BlobHeader{}
+
+	data := make([]byte, size)
+	n, err := io.ReadFull(r, data)
+	if err != nil {
+		return nil, errors.Wrap(err, "reading blob header")
+	}
+	if n != int(size) {
+		return nil, errors.Errorf("reading blob header, only got %d bytes instead of %d", n, size)
+	}
+
+	err = proto.Unmarshal(data, blobHeader)
+	if err != nil {
+		return nil, errors.Wrap(err, "unmarshaling header")
+	}
+
+	return blobHeader, nil
 }

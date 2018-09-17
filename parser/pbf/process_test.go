@@ -1,6 +1,8 @@
 package pbf
 
 import (
+	"context"
+	"os"
 	"sync"
 	"testing"
 
@@ -8,14 +10,31 @@ import (
 )
 
 func TestParser(t *testing.T) {
-	nodes := make(chan []element.Node)
-	coords := make(chan []element.Node)
-	ways := make(chan []element.Way)
-	relations := make(chan []element.Relation)
-	p, err := NewParser("monaco-20150428.osm.pbf")
+	checkParser(t)
+}
+
+func BenchmarkParser(b *testing.B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		checkParser(b)
+	}
+}
+
+func checkParser(t testing.TB) {
+	conf := Config{
+		Coords:    make(chan []element.Node),
+		Nodes:     make(chan []element.Node),
+		Ways:      make(chan []element.Way),
+		Relations: make(chan []element.Relation),
+	}
+
+	f, err := os.Open("./monaco-20150428.osm.pbf")
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer f.Close()
+
+	p := New(f, conf)
 
 	wg := sync.WaitGroup{}
 
@@ -23,7 +42,7 @@ func TestParser(t *testing.T) {
 
 	go func() {
 		wg.Add(1)
-		for nd := range nodes {
+		for nd := range conf.Nodes {
 			numNodes += int64(len(nd))
 		}
 		wg.Done()
@@ -31,7 +50,7 @@ func TestParser(t *testing.T) {
 
 	go func() {
 		wg.Add(1)
-		for nd := range coords {
+		for nd := range conf.Coords {
 			numCoords += int64(len(nd))
 		}
 		wg.Done()
@@ -39,7 +58,7 @@ func TestParser(t *testing.T) {
 
 	go func() {
 		wg.Add(1)
-		for ways := range ways {
+		for ways := range conf.Ways {
 			numWays += int64(len(ways))
 		}
 		wg.Done()
@@ -47,17 +66,16 @@ func TestParser(t *testing.T) {
 
 	go func() {
 		wg.Add(1)
-		for rels := range relations {
+		for rels := range conf.Relations {
 			numRelations += int64(len(rels))
 		}
 		wg.Done()
 	}()
 
-	p.Parse(coords, nodes, ways, relations)
-	close(coords)
-	close(nodes)
-	close(ways)
-	close(relations)
+	err = p.Parse(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
 	wg.Wait()
 
 	if numCoords != 17233 {
@@ -75,12 +93,17 @@ func TestParser(t *testing.T) {
 }
 
 func TestParseCoords(t *testing.T) {
-	coords := make(chan []element.Node)
+	conf := Config{
+		Coords: make(chan []element.Node),
+	}
 
-	p, err := NewParser("monaco-20150428.osm.pbf")
+	f, err := os.Open("./monaco-20150428.osm.pbf")
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer f.Close()
+
+	p := New(f, conf)
 
 	wg := sync.WaitGroup{}
 
@@ -88,14 +111,16 @@ func TestParseCoords(t *testing.T) {
 
 	go func() {
 		wg.Add(1)
-		for nd := range coords {
+		for nd := range conf.Coords {
 			numCoords += int64(len(nd))
 		}
 		wg.Done()
 	}()
 
-	p.Parse(coords, nil, nil, nil)
-	close(coords)
+	err = p.Parse(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
 	wg.Wait()
 
 	if numCoords != 17233 {
@@ -103,24 +128,66 @@ func TestParseCoords(t *testing.T) {
 	}
 }
 
-func TestParserNotify(t *testing.T) {
-	nodes := make(chan []element.Node)
-	coords := make(chan []element.Node)
-	ways := make(chan []element.Way)
-	relations := make(chan []element.Relation)
+func TestParseNodes(t *testing.T) {
+	conf := Config{
+		Nodes: make(chan []element.Node),
+	}
 
-	p, err := NewParser("monaco-20150428.osm.pbf")
+	f, err := os.Open("./monaco-20150428.osm.pbf")
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer f.Close()
+
+	p := New(f, conf)
+
+	wg := sync.WaitGroup{}
+
+	var numNodes int64
+
+	go func() {
+		wg.Add(1)
+		for nd := range conf.Nodes {
+			numNodes += int64(len(nd))
+		}
+		wg.Done()
+	}()
+
+	err = p.Parse(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	wg.Wait()
+
+	if numNodes != 17233 {
+		t.Error("parsed an unexpected number of nodes:", numNodes)
+	}
+}
+
+func TestParserNotify(t *testing.T) {
+	conf := Config{
+		Coords:    make(chan []element.Node),
+		Nodes:     make(chan []element.Node),
+		Ways:      make(chan []element.Way),
+		Relations: make(chan []element.Relation),
+	}
+
+	f, err := os.Open("./monaco-20150428.osm.pbf")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+
 	waysWg := sync.WaitGroup{}
-	p.RegisterFirstWayCallback(func() {
+	conf.OnFirstWay = func() {
 		waysWg.Add(1)
-		coords <- nil
-		nodes <- nil
+		conf.Coords <- nil
+		conf.Nodes <- nil
 		waysWg.Done()
 		waysWg.Wait()
-	})
+	}
+
+	p := New(f, conf)
 
 	wg := sync.WaitGroup{}
 
@@ -129,7 +196,7 @@ func TestParserNotify(t *testing.T) {
 	waysWg.Add(1)
 	go func() {
 		wg.Add(1)
-		for nd := range nodes {
+		for nd := range conf.Nodes {
 			if nd == nil {
 				waysWg.Done()
 				waysWg.Wait()
@@ -143,7 +210,7 @@ func TestParserNotify(t *testing.T) {
 	waysWg.Add(1)
 	go func() {
 		wg.Add(1)
-		for nd := range coords {
+		for nd := range conf.Coords {
 			if nd == nil {
 				waysWg.Done()
 				waysWg.Wait()
@@ -156,7 +223,7 @@ func TestParserNotify(t *testing.T) {
 
 	go func() {
 		wg.Add(1)
-		for ways := range ways {
+		for ways := range conf.Ways {
 			numWays += int64(len(ways))
 		}
 		wg.Done()
@@ -164,17 +231,16 @@ func TestParserNotify(t *testing.T) {
 
 	go func() {
 		wg.Add(1)
-		for rels := range relations {
+		for rels := range conf.Relations {
 			numRelations += int64(len(rels))
 		}
 		wg.Done()
 	}()
 
-	p.Parse(coords, nodes, ways, relations)
-	close(coords)
-	close(nodes)
-	close(ways)
-	close(relations)
+	err = p.Parse(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
 	wg.Wait()
 
 	if numCoords != 17233 {
@@ -187,6 +253,67 @@ func TestParserNotify(t *testing.T) {
 		t.Error("parsed an unexpected number of ways:", numWays)
 	}
 	if numRelations != 108 {
+		t.Error("parsed an unexpected number of relations:", numRelations)
+	}
+}
+func TestParseCancel(t *testing.T) {
+	conf := Config{
+		Nodes:       make(chan []element.Node),
+		Ways:        make(chan []element.Way),
+		Relations:   make(chan []element.Relation),
+		Concurrency: 1,
+	}
+
+	f, err := os.Open("./monaco-20150428.osm.pbf")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+
+	p := New(f, conf)
+
+	wg := sync.WaitGroup{}
+	ctx, stop := context.WithCancel(context.Background())
+	var numNodes, numWays, numRelations int64
+
+	go func() {
+		wg.Add(1)
+		for nd := range conf.Nodes {
+			numNodes += int64(len(nd))
+			// stop after first parsed nodes
+			stop()
+		}
+		wg.Done()
+	}()
+	go func() {
+		wg.Add(1)
+		for ways := range conf.Ways {
+			numWays += int64(len(ways))
+		}
+		wg.Done()
+	}()
+	go func() {
+		wg.Add(1)
+		for rels := range conf.Relations {
+			numRelations += int64(len(rels))
+		}
+		wg.Done()
+	}()
+
+	err = p.Parse(ctx)
+	if err != context.Canceled {
+		t.Fatal(err)
+	}
+	wg.Wait()
+
+	// only two blocks of 8k nodes should be parsed before everything is stop()ed
+	if numNodes != 16000 {
+		t.Error("parsed an unexpected number of nodes:", numNodes)
+	}
+	if numWays != 0 {
+		t.Error("parsed an unexpected number of ways:", numWays)
+	}
+	if numRelations != 0 {
 		t.Error("parsed an unexpected number of relations:", numRelations)
 	}
 }
@@ -216,5 +343,4 @@ func TestBarrier(t *testing.T) {
 
 	// does not wait/block
 	bar.doneWait()
-
 }

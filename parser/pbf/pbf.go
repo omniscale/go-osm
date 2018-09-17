@@ -10,7 +10,8 @@ const coord_factor float64 = 11930464.7083 // ((2<<31)-1)/360.0
 func readDenseNodes(
 	dense *osmpbf.DenseNodes,
 	block *osmpbf.PrimitiveBlock,
-	stringtable stringTable) (coords []element.Node, nodes []element.Node) {
+	stringtable stringTable,
+	allNodes bool) (coords []element.Node, nodes []element.Node) {
 
 	var lastId int64
 	var lastLon, lastLat int64
@@ -29,21 +30,24 @@ func readDenseNodes(
 		coords[i].Id = lastId
 		coords[i].Long = (coordScale * float64(lonOffset+(granularity*lastLon)))
 		coords[i].Lat = (coordScale * float64(latOffset+(granularity*lastLat)))
+		var tags map[string]string
+		addToNodes := allNodes
 		if stringtable != nil && len(dense.KeysVals) > 0 {
 			if dense.KeysVals[lastKeyValPos] != 0 {
-				tags := parseDenseNodeTags(stringtable, &dense.KeysVals, &lastKeyValPos)
+				tags = parseDenseNodeTags(stringtable, &dense.KeysVals, &lastKeyValPos)
 				if tags != nil {
-					if _, ok := tags["created_by"]; ok && len(tags) == 1 {
-						// don't add nodes with only created_by tag to nodes cache
-					} else {
-						nd := coords[i]
-						nd.Tags = tags
-						nodes = append(nodes, nd)
+					if _, ok := tags["created_by"]; len(tags) > 1 || !ok {
+						addToNodes = true
 					}
 				}
 			} else {
 				lastKeyValPos += 1
 			}
+		}
+		if addToNodes {
+			nd := coords[i]
+			nd.Tags = tags
+			nodes = append(nodes, nd)
 		}
 	}
 
@@ -87,7 +91,8 @@ func parseTags(stringtable stringTable, keys []uint32, vals []uint32) map[string
 func readNodes(
 	nodes []osmpbf.Node,
 	block *osmpbf.PrimitiveBlock,
-	stringtable stringTable) ([]element.Node, []element.Node) {
+	stringtable stringTable,
+	allNodes bool) ([]element.Node, []element.Node) {
 
 	coords := make([]element.Node, len(nodes))
 	nds := make([]element.Node, 0, len(nodes)/8)
@@ -103,17 +108,21 @@ func readNodes(
 		coords[i].Id = id
 		coords[i].Long = (coordScale * float64(lonOffset+(granularity*lon)))
 		coords[i].Lat = (coordScale * float64(latOffset+(granularity*lat)))
+		var tags map[string]string
+		addToNodes := allNodes
 		if stringtable != nil {
-			tags := parseTags(stringtable, nodes[i].Keys, nodes[i].Vals)
+			tags = parseTags(stringtable, nodes[i].Keys, nodes[i].Vals)
 			if tags != nil {
-				if _, ok := tags["created_by"]; ok && len(tags) == 1 {
+				if _, ok := tags["created_by"]; len(tags) > 1 || !ok {
 					// don't add nodes with only created_by tag to nodes cache
-				} else {
-					nd := coords[i]
-					nd.Tags = tags
-					nds = append(nds, nd)
+					addToNodes = true
 				}
 			}
+		}
+		if addToNodes {
+			nd := coords[i]
+			nd.Tags = tags
+			nds = append(nds, nd)
 		}
 	}
 	return coords, nds
