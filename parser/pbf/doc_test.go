@@ -7,7 +7,7 @@ import (
 	"os"
 	"sync"
 
-	"github.com/omniscale/go-osm/element"
+	"github.com/omniscale/go-osm"
 	"github.com/omniscale/go-osm/parser/pbf"
 )
 
@@ -20,9 +20,9 @@ func Example() {
 	defer f.Close()
 
 	// Create channels for the parsed elements.
-	nodes := make(chan []element.Node)
-	ways := make(chan []element.Way)
-	relations := make(chan []element.Relation)
+	nodes := make(chan []osm.Node)
+	ways := make(chan []osm.Way)
+	relations := make(chan []osm.Relation)
 
 	// Initialize PBF parser.
 	p := pbf.New(f, pbf.Config{

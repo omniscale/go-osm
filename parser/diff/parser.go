@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/omniscale/go-osm/element"
+	"github.com/omniscale/go-osm"
 	"github.com/pkg/errors"
 )
 
@@ -17,13 +17,12 @@ type Element struct {
 	Add  bool
 	Mod  bool
 	Del  bool
-	Node *element.Node
-	Way  *element.Way
-	Rel  *element.Relation
+	Node *osm.Node
+	Way  *osm.Way
+	Rel  *osm.Relation
 }
 
 // Parser is a stream based parser for OSM diff files (.osc).
-// Parsing is handled in a background goroutine.
 type Parser struct {
 	reader io.Reader
 	conf   Config
@@ -42,7 +41,7 @@ type Config struct {
 	KeepOpen bool
 }
 
-// New returns a parser from an io.Reader
+// New creates a new parser for the provided input. Config specifies the destinations for the parsed elements.
 func New(r io.Reader, conf Config) *Parser {
 	return &Parser{reader: r, conf: conf}
 }
@@ -72,9 +71,9 @@ func (p *Parser) Parse(ctx context.Context) error {
 	tags := make(map[string]string)
 	newElem := false
 
-	node := &element.Node{}
-	way := &element.Way{}
-	rel := &element.Relation{}
+	node := &osm.Node{}
+	way := &osm.Way{}
+	rel := &osm.Relation{}
 
 NextToken:
 	for {
@@ -138,12 +137,12 @@ NextToken:
 					}
 				}
 			case "member":
-				member := element.Member{}
+				member := osm.Member{}
 				for _, attr := range tok.Attr {
 					switch attr.Name.Local {
 					case "type":
 						var ok bool
-						member.Type, ok = element.MemberTypeValues[attr.Value]
+						member.Type, ok = memberTypeValues[attr.Value]
 						if !ok {
 							// ignore unknown member types
 							continue NextToken
@@ -183,21 +182,21 @@ NextToken:
 					node.Tags = tags
 				}
 				e.Node = node
-				node = &element.Node{}
+				node = &osm.Node{}
 				newElem = true
 			case "way":
 				if len(tags) > 0 {
 					way.Tags = tags
 				}
 				e.Way = way
-				way = &element.Way{}
+				way = &osm.Way{}
 				newElem = true
 			case "relation":
 				if len(tags) > 0 {
 					rel.Tags = tags
 				}
 				e.Rel = rel
-				rel = &element.Relation{}
+				rel = &osm.Relation{}
 				newElem = true
 			case "osmChange":
 				// EOF
@@ -212,7 +211,10 @@ NextToken:
 					tags = make(map[string]string)
 				}
 				newElem = false
-				p.conf.Elements <- e
+				select {
+				case <-ctx.Done():
+				case p.conf.Elements <- e:
+				}
 			}
 		}
 	}
@@ -220,8 +222,8 @@ NextToken:
 	return nil
 }
 
-func setElemMetadata(attrs []xml.Attr, elem *element.OSMElem) {
-	elem.Metadata = &element.Metadata{}
+func setElemMetadata(attrs []xml.Attr, elem *osm.OSMElem) {
+	elem.Metadata = &osm.Metadata{}
 	for _, attr := range attrs {
 		switch attr.Name.Local {
 		case "version":
@@ -240,4 +242,10 @@ func setElemMetadata(attrs []xml.Attr, elem *element.OSMElem) {
 			elem.Metadata.Timestamp = ts.Unix()
 		}
 	}
+}
+
+var memberTypeValues = map[string]osm.MemberType{
+	"node":     osm.NODE,
+	"way":      osm.WAY,
+	"relation": osm.RELATION,
 }

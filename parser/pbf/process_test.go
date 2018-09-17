@@ -7,7 +7,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/omniscale/go-osm/element"
+	"github.com/omniscale/go-osm"
 )
 
 func TestParser(t *testing.T) {
@@ -30,10 +30,10 @@ func BenchmarkParser_IncludeMetadata(b *testing.B) {
 
 func checkParser(t testing.TB, includeMD bool) {
 	conf := Config{
-		Coords:          make(chan []element.Node),
-		Nodes:           make(chan []element.Node),
-		Ways:            make(chan []element.Way),
-		Relations:       make(chan []element.Relation),
+		Coords:          make(chan []osm.Node),
+		Nodes:           make(chan []osm.Node),
+		Ways:            make(chan []osm.Way),
+		Relations:       make(chan []osm.Relation),
 		IncludeMetadata: includeMD,
 	}
 
@@ -103,7 +103,7 @@ func checkParser(t testing.TB, includeMD bool) {
 
 func TestParseCoords(t *testing.T) {
 	conf := Config{
-		Coords: make(chan []element.Node),
+		Coords: make(chan []osm.Node),
 	}
 
 	f, err := os.Open("./monaco-20150428.osm.pbf")
@@ -139,7 +139,7 @@ func TestParseCoords(t *testing.T) {
 
 func TestParseNodes(t *testing.T) {
 	conf := Config{
-		Nodes: make(chan []element.Node),
+		Nodes: make(chan []osm.Node),
 	}
 
 	f, err := os.Open("./monaco-20150428.osm.pbf")
@@ -175,10 +175,10 @@ func TestParseNodes(t *testing.T) {
 
 func TestParserNotify(t *testing.T) {
 	conf := Config{
-		Coords:    make(chan []element.Node),
-		Nodes:     make(chan []element.Node),
-		Ways:      make(chan []element.Way),
-		Relations: make(chan []element.Relation),
+		Coords:    make(chan []osm.Node),
+		Nodes:     make(chan []osm.Node),
+		Ways:      make(chan []osm.Way),
+		Relations: make(chan []osm.Relation),
 	}
 
 	f, err := os.Open("./monaco-20150428.osm.pbf")
@@ -297,9 +297,9 @@ func TestParserNotify(t *testing.T) {
 
 func TestParseCancel(t *testing.T) {
 	conf := Config{
-		Nodes:       make(chan []element.Node),
-		Ways:        make(chan []element.Way),
-		Relations:   make(chan []element.Relation),
+		Nodes:       make(chan []osm.Node),
+		Ways:        make(chan []osm.Way),
+		Relations:   make(chan []osm.Relation),
 		Concurrency: 1,
 	}
 
@@ -360,9 +360,9 @@ func TestParseCancel(t *testing.T) {
 func TestParseMetadata(t *testing.T) {
 	conf := Config{
 		IncludeMetadata: true,
-		Nodes:           make(chan []element.Node),
-		Ways:            make(chan []element.Way),
-		Relations:       make(chan []element.Relation),
+		Nodes:           make(chan []osm.Node),
+		Ways:            make(chan []osm.Way),
+		Relations:       make(chan []osm.Relation),
 		Concurrency:     1,
 	}
 
@@ -376,7 +376,7 @@ func TestParseMetadata(t *testing.T) {
 
 	wg := sync.WaitGroup{}
 
-	var nodes []element.Node
+	var nodes []osm.Node
 	wg.Add(1)
 	go func() {
 		for nds := range conf.Nodes {
@@ -385,7 +385,7 @@ func TestParseMetadata(t *testing.T) {
 		wg.Done()
 	}()
 
-	var ways []element.Way
+	var ways []osm.Way
 	wg.Add(1)
 	go func() {
 		for ws := range conf.Ways {
@@ -394,7 +394,7 @@ func TestParseMetadata(t *testing.T) {
 		wg.Done()
 	}()
 
-	var rels []element.Relation
+	var rels []osm.Relation
 	wg.Add(1)
 	go func() {
 		for rs := range conf.Relations {
@@ -411,13 +411,13 @@ func TestParseMetadata(t *testing.T) {
 
 	for _, tc := range []struct {
 		Idx  int
-		Want element.Node
+		Want osm.Node
 	}{
 		{Idx: 0,
-			Want: element.Node{
-				OSMElem: element.OSMElem{
+			Want: osm.Node{
+				OSMElem: osm.OSMElem{
 					ID: 21911863,
-					Metadata: &element.Metadata{
+					Metadata: &osm.Metadata{
 						UserID:    378737,
 						UserName:  "Scrup",
 						Version:   5,
@@ -430,11 +430,11 @@ func TestParseMetadata(t *testing.T) {
 			},
 		},
 		{Idx: 2,
-			Want: element.Node{
-				OSMElem: element.OSMElem{
+			Want: osm.Node{
+				OSMElem: osm.OSMElem{
 					ID:   21911886,
-					Tags: element.Tags{"crossing_ref": "zebra", "highway": "crossing"},
-					Metadata: &element.Metadata{
+					Tags: osm.Tags{"crossing_ref": "zebra", "highway": "crossing"},
+					Metadata: &osm.Metadata{
 						UserID:    378737,
 						UserName:  "Scrup",
 						Version:   8,
@@ -454,14 +454,14 @@ func TestParseMetadata(t *testing.T) {
 
 	for _, tc := range []struct {
 		Idx  int
-		Want element.Way
+		Want osm.Way
 	}{
 		{Idx: 0,
-			Want: element.Way{
-				OSMElem: element.OSMElem{
+			Want: osm.Way{
+				OSMElem: osm.OSMElem{
 					ID:   4097656,
-					Tags: element.Tags{"highway": "primary", "name": "Avenue Princesse Alice", "oneway": "yes"},
-					Metadata: &element.Metadata{
+					Tags: osm.Tags{"highway": "primary", "name": "Avenue Princesse Alice", "oneway": "yes"},
+					Metadata: &osm.Metadata{
 						UserID:    852996,
 						UserName:  "Mg2",
 						Version:   7,
@@ -473,11 +473,11 @@ func TestParseMetadata(t *testing.T) {
 			},
 		},
 		{Idx: 2,
-			Want: element.Way{
-				OSMElem: element.OSMElem{
+			Want: osm.Way{
+				OSMElem: osm.OSMElem{
 					ID:   4224972,
-					Tags: element.Tags{"name": "Avenue des Papalins", "oneway": "yes", "highway": "residential"},
-					Metadata: &element.Metadata{
+					Tags: osm.Tags{"name": "Avenue des Papalins", "oneway": "yes", "highway": "residential"},
+					Metadata: &osm.Metadata{
 						UserID:    393883,
 						UserName:  "fmalamaire",
 						Version:   9,
@@ -496,14 +496,14 @@ func TestParseMetadata(t *testing.T) {
 
 	for _, tc := range []struct {
 		Idx  int
-		Want element.Relation
+		Want osm.Relation
 	}{
 		{Idx: 26,
-			Want: element.Relation{
-				OSMElem: element.OSMElem{
+			Want: osm.Relation{
+				OSMElem: osm.OSMElem{
 					ID:   1369631,
-					Tags: element.Tags{"type": "multipolygon"},
-					Metadata: &element.Metadata{
+					Tags: osm.Tags{"type": "multipolygon"},
+					Metadata: &osm.Metadata{
 						UserID:    110263,
 						UserName:  "werner2101",
 						Version:   2,
@@ -511,9 +511,9 @@ func TestParseMetadata(t *testing.T) {
 						Changeset: 7346501,
 					},
 				},
-				Members: []element.Member{
-					element.Member{ID: 94452671, Type: 1, Role: "inner"},
-					element.Member{ID: 94452619, Type: 1, Role: "outer"},
+				Members: []osm.Member{
+					osm.Member{ID: 94452671, Type: 1, Role: "inner"},
+					osm.Member{ID: 94452619, Type: 1, Role: "outer"},
 				},
 			},
 		},

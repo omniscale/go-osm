@@ -2,62 +2,99 @@ package changeset
 
 import (
 	"compress/gzip"
+	"context"
 	"encoding/xml"
-	"os"
-	"time"
+	"io"
+
+	"github.com/omniscale/go-osm"
+	"github.com/omniscale/go-osm/parser/changeset/internal/osmxml"
+	"github.com/pkg/errors"
 )
 
-type changeFile struct {
-	XMLName   string      `xml:"osm"`
-	Generator string      `xml:"generator,attr"`
-	Changes   []Changeset `xml:"changeset"`
+// Parser is a stream based parser for OSM diff files (.osc).
+// Parsing is handled in a background goroutine.
+type Parser struct {
+	reader io.Reader
+	conf   Config
 }
 
-type Changeset struct {
-	Id         int       `xml:"id,attr"`
-	CreatedAt  time.Time `xml:"created_at,attr"`
-	ClosedAt   time.Time `xml:"closed_at,attr"`
-	Open       bool      `xml:"open,attr"`
-	User       string    `xml:"user,attr"`
-	UserId     int       `xml:"uid,attr"`
-	NumChanges int       `xml:"num_changes,attr"`
-	MinLon     float64   `xml:"min_lon,attr"`
-	MinLat     float64   `xml:"min_lat,attr"`
-	MaxLon     float64   `xml:"max_lon,attr"`
-	MaxLat     float64   `xml:"max_lat,attr"`
-	Comments   []Comment `xml:"discussion>comment"`
-	Tags       []Tag     `xml:"tag"`
+type Config struct {
+	// Changesets specifies the destination for parsed changesets.
+	Changesets chan osm.Changeset
+
+	// KeepOpen specifies whether the destination channel should be keept open
+	// after Parse(). By default, the Changesets channel is closed after Parse().
+	KeepOpen bool
 }
 
-type Comment struct {
-	UserId int       `xml:"uid,attr"`
-	User   string    `xml:"user,attr"`
-	Date   time.Time `xml:"date,attr"`
-	Text   string    `xml:"text"`
+// New returns a parser from an io.Reader
+func New(r io.Reader, conf Config) *Parser {
+	return &Parser{reader: r, conf: conf}
 }
 
-type Tag struct {
-	Key   string `xml:"k,attr"`
-	Value string `xml:"v,attr"`
-}
-
-// ParseAllOsmGz parses all changesets from a .osm.gz file.
-func ParseAllOsmGz(change string) ([]Changeset, error) {
-	file, err := os.Open(change)
+// NewGZIP returns a parser from a GZIP compressed io.Reader
+func NewGZIP(r io.Reader, conf Config) (*Parser, error) {
+	r, err := gzip.NewReader(r)
 	if err != nil {
 		return nil, err
 	}
-	defer file.Close()
+	return New(r, conf), nil
+}
 
-	reader, err := gzip.NewReader(file)
-	if err != nil {
-		return nil, err
-	}
-	cf := changeFile{}
-	err = xml.NewDecoder(reader).Decode(&cf)
-	if err != nil {
-		return nil, err
+func (p *Parser) Parse(ctx context.Context) error {
+	if !p.conf.KeepOpen {
+		defer func() {
+			if p.conf.Changesets != nil {
+				close(p.conf.Changesets)
+			}
+		}()
 	}
 
-	return cf.Changes, nil
+	dec := xml.NewDecoder(p.reader)
+	cf := osmxml.ChangeFile{}
+	if err := dec.Decode(&cf); err != nil {
+		return errors.Wrap(err, "decoding changes file")
+	}
+
+	for _, ch := range cf.Changes {
+		result := osm.Changeset{
+			ID:         ch.ID,
+			CreatedAt:  ch.CreatedAt,
+			ClosedAt:   ch.ClosedAt,
+			Open:       ch.Open,
+			UserID:     ch.UserID,
+			UserName:   ch.UserName,
+			NumChanges: ch.NumChanges,
+			MaxExtent: [4]float64{
+				ch.MinLon,
+				ch.MinLat,
+				ch.MaxLon,
+				ch.MaxLat,
+			},
+		}
+
+		tags := make(osm.Tags, len(ch.Tags))
+		for _, t := range ch.Tags {
+			tags[t.Key] = t.Value
+		}
+		result.Tags = tags
+
+		comment := make([]osm.Comment, len(ch.Comments))
+		for i, t := range ch.Comments {
+			comment[i] = osm.Comment{
+				UserID:    t.UserID,
+				UserName:  t.UserName,
+				CreatedAt: t.Date,
+				Text:      t.Text,
+			}
+		}
+		result.Comments = comment
+
+		select {
+		case <-ctx.Done():
+		case p.conf.Changesets <- result:
+		}
+	}
+
+	return nil
 }

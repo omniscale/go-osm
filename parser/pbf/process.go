@@ -8,7 +8,7 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/omniscale/go-osm/element"
+	"github.com/omniscale/go-osm"
 	"github.com/pkg/errors"
 )
 
@@ -19,13 +19,13 @@ type Config struct {
 
 	// Nodes specifies the destination for parsed nodes. See also Coords below.
 	// For efficiency, multiple nodes are passed in batches.
-	Nodes chan []element.Node
+	Nodes chan []osm.Node
 	// Ways specifies the destination for parsed ways.
 	// For efficiency, multiple wats are passed in batches.
-	Ways chan []element.Way
+	Ways chan []osm.Way
 	// Relations specifies the destination for parsed relations.
 	// For efficiency, multiple relations are passed in batches.
-	Relations chan []element.Relation
+	Relations chan []osm.Relation
 
 	// Coords specifies the destination for parsed nodes without any tags. This
 	// can be used for more efficient storage/proceessing of nodes that are
@@ -35,7 +35,7 @@ type Config struct {
 	// If a Coords channel is specified, then nodes without tags are
 	// not sent to the Nodes channel. However, the Coords channel will receive
 	// all nodes.
-	Coords chan []element.Node
+	Coords chan []osm.Node
 
 	// KeepOpen specifies whether the destination channels should be keept open
 	// after Parse(). By default, Nodes, Ways, Relations and Coords channels
