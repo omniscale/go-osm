@@ -11,8 +11,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-// Parser is a stream based parser for OSM diff files (.osc).
-// Parsing is handled in a background goroutine.
 type Parser struct {
 	reader io.Reader
 	conf   Config
@@ -27,7 +25,7 @@ type Config struct {
 	KeepOpen bool
 }
 
-// New returns a parser from an io.Reader
+// New creates a new parser for the provided input. Config specifies the destinations for the parsed changesets.
 func New(r io.Reader, conf Config) *Parser {
 	return &Parser{reader: r, conf: conf}
 }

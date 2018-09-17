@@ -13,15 +13,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-type Element struct {
-	Add  bool
-	Mod  bool
-	Del  bool
-	Node *osm.Node
-	Way  *osm.Way
-	Rel  *osm.Relation
-}
-
 // Parser is a stream based parser for OSM diff files (.osc).
 type Parser struct {
 	reader io.Reader
@@ -33,8 +24,8 @@ type Config struct {
 	// user names should be parsed.
 	IncludeMetadata bool
 
-	// Elements specifies the destination for parsed elements.
-	Elements chan Element
+	// Diffs specifies the destination for parsed diff elements.
+	Diffs chan osm.Diff
 
 	// KeepOpen specifies whether the destination channel should be keept open
 	// after Parse(). By default, the Elements channel is closed after Parse().
@@ -58,8 +49,8 @@ func NewGZIP(r io.Reader, conf Config) (*Parser, error) {
 func (p *Parser) Parse(ctx context.Context) error {
 	if !p.conf.KeepOpen {
 		defer func() {
-			if p.conf.Elements != nil {
-				close(p.conf.Elements)
+			if p.conf.Diffs != nil {
+				close(p.conf.Diffs)
 			}
 		}()
 	}
@@ -175,7 +166,7 @@ NextToken:
 				log.Println("unhandled XML tag ", tok.Name.Local, " in OSC")
 			}
 		case xml.EndElement:
-			var e Element
+			var e osm.Diff
 			switch tok.Name.Local {
 			case "node":
 				if len(tags) > 0 {
@@ -204,16 +195,16 @@ NextToken:
 			}
 
 			if newElem {
-				e.Add = add
-				e.Del = del
-				e.Mod = mod
+				e.Create = add
+				e.Delete = del
+				e.Modify = mod
 				if len(tags) > 0 {
 					tags = make(map[string]string)
 				}
 				newElem = false
 				select {
 				case <-ctx.Done():
-				case p.conf.Elements <- e:
+				case p.conf.Diffs <- e:
 				}
 			}
 		}

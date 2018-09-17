@@ -13,7 +13,7 @@ import (
 
 func TestParse(t *testing.T) {
 	conf := Config{
-		Elements:        make(chan Element),
+		Diffs:           make(chan osm.Diff),
 		IncludeMetadata: true,
 	}
 	f, err := os.Open("612.osc.gz")
@@ -27,12 +27,12 @@ func TestParse(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	elements := []Element{}
+	diffs := []osm.Diff{}
 	wg := sync.WaitGroup{}
 	wg.Add(1)
 	go func() {
-		for elem := range conf.Elements {
-			elements = append(elements, elem)
+		for d := range conf.Diffs {
+			diffs = append(diffs, d)
 		}
 		wg.Done()
 	}()
@@ -46,15 +46,15 @@ func TestParse(t *testing.T) {
 	for _, tc := range []struct {
 		Idx  int
 		Name string
-		Want Element
+		Want osm.Diff
 	}{
 		{
 			Name: "modified node",
 			Idx:  0,
-			Want: Element{
-				Add: false,
-				Mod: true,
-				Del: false,
+			Want: osm.Diff{
+				Create: false,
+				Modify: true,
+				Delete: false,
 				Node: &osm.Node{
 					OSMElem: osm.OSMElem{
 						ID:       25594547,
@@ -69,10 +69,10 @@ func TestParse(t *testing.T) {
 		{
 			Name: "deleted node",
 			Idx:  47,
-			Want: Element{
-				Add: false,
-				Mod: false,
-				Del: true,
+			Want: osm.Diff{
+				Create: false,
+				Modify: false,
+				Delete: true,
 				Node: &osm.Node{
 					OSMElem: osm.OSMElem{
 						ID:       1884933281,
@@ -86,10 +86,10 @@ func TestParse(t *testing.T) {
 		{
 			Idx:  1753,
 			Name: "added node",
-			Want: Element{
-				Add: true,
-				Mod: false,
-				Del: false,
+			Want: osm.Diff{
+				Create: true,
+				Modify: false,
+				Delete: false,
 				Node: &osm.Node{
 					OSMElem: osm.OSMElem{
 						ID:       4533952893,
@@ -104,10 +104,10 @@ func TestParse(t *testing.T) {
 		{
 			Idx:  2267,
 			Name: "modified way",
-			Want: Element{
-				Add: false,
-				Mod: true,
-				Del: false,
+			Want: osm.Diff{
+				Create: false,
+				Modify: true,
+				Delete: false,
 				Way: &osm.Way{
 					OSMElem: osm.OSMElem{
 						ID:       6863685,
@@ -121,10 +121,10 @@ func TestParse(t *testing.T) {
 		{
 			Idx:  2563,
 			Name: "modified relation",
-			Want: Element{
-				Add: false,
-				Mod: true,
-				Del: false,
+			Want: osm.Diff{
+				Create: false,
+				Modify: true,
+				Delete: false,
 				Rel: &osm.Relation{
 					OSMElem: osm.OSMElem{
 						ID:       2139646,
@@ -159,9 +159,9 @@ func TestParse(t *testing.T) {
 		},
 	} {
 		t.Run(tc.Name, func(t *testing.T) {
-			if !reflect.DeepEqual(elements[tc.Idx], tc.Want) {
-				pretty.Println(elements[tc.Idx])
-				t.Errorf("unexpected element, got:\n%#v\nwant:\n%#v", elements[tc.Idx], tc.Want)
+			if !reflect.DeepEqual(diffs[tc.Idx], tc.Want) {
+				pretty.Println(diffs[tc.Idx])
+				t.Errorf("unexpected diff, got:\n%#v\nwant:\n%#v", diffs[tc.Idx], tc.Want)
 			}
 		})
 	}
