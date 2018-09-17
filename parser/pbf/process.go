@@ -202,7 +202,7 @@ func (p *Parser) parseBlock(blob []byte) error {
 		if p.conf.Coords != nil || p.conf.Nodes != nil {
 			dense := group.GetDense()
 			if dense != nil {
-				parsedCoords, parsedNodes := readDenseNodes(dense, block, stringtable, p.conf.Coords == nil)
+				parsedCoords, parsedNodes := readDenseNodes(dense, block, stringtable, p.conf.Coords == nil, p.conf.IncludeMetadata)
 				if len(parsedCoords) > 0 && p.conf.Coords != nil {
 					p.conf.Coords <- parsedCoords
 				}
@@ -211,7 +211,7 @@ func (p *Parser) parseBlock(blob []byte) error {
 				}
 			}
 			if len(group.Nodes) > 0 {
-				parsedCoords, parsedNodes := readNodes(group.Nodes, block, stringtable, p.conf.Coords == nil)
+				parsedCoords, parsedNodes := readNodes(group.Nodes, block, stringtable, p.conf.Coords == nil, p.conf.IncludeMetadata)
 				if len(parsedCoords) > 0 && p.conf.Coords != nil {
 					p.conf.Coords <- parsedCoords
 				}
@@ -221,7 +221,7 @@ func (p *Parser) parseBlock(blob []byte) error {
 			}
 		}
 		if len(group.Ways) > 0 && p.conf.Ways != nil {
-			parsedWays := readWays(group.Ways, block, stringtable)
+			parsedWays := readWays(group.Ways, block, stringtable, p.conf.IncludeMetadata)
 			if len(parsedWays) > 0 {
 				if p.waySync != nil {
 					p.waySync.doneWait()
@@ -230,7 +230,7 @@ func (p *Parser) parseBlock(blob []byte) error {
 			}
 		}
 		if len(group.Relations) > 0 && p.conf.Relations != nil {
-			parsedRelations := readRelations(group.Relations, block, stringtable)
+			parsedRelations := readRelations(group.Relations, block, stringtable, p.conf.IncludeMetadata)
 			if len(parsedRelations) > 0 {
 				if p.waySync != nil {
 					p.waySync.doneWait()

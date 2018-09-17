@@ -139,7 +139,7 @@ NextToken:
 				for _, attr := range tok.Attr {
 					switch attr.Name.Local {
 					case "id":
-						node.Id, _ = strconv.ParseInt(attr.Value, 10, 64)
+						node.ID, _ = strconv.ParseInt(attr.Value, 10, 64)
 					case "lat":
 						node.Lat, _ = strconv.ParseFloat(attr.Value, 64)
 					case "lon":
@@ -152,7 +152,7 @@ NextToken:
 			case "way":
 				for _, attr := range tok.Attr {
 					if attr.Name.Local == "id" {
-						way.Id, _ = strconv.ParseInt(attr.Value, 10, 64)
+						way.ID, _ = strconv.ParseInt(attr.Value, 10, 64)
 					}
 				}
 				if metadata {
@@ -161,7 +161,7 @@ NextToken:
 			case "relation":
 				for _, attr := range tok.Attr {
 					if attr.Name.Local == "id" {
-						rel.Id, _ = strconv.ParseInt(attr.Value, 10, 64)
+						rel.ID, _ = strconv.ParseInt(attr.Value, 10, 64)
 					}
 				}
 				if metadata {
@@ -189,7 +189,7 @@ NextToken:
 						member.Role = attr.Value
 					case "ref":
 						var err error
-						member.Id, err = strconv.ParseInt(attr.Value, 10, 64)
+						member.ID, err = strconv.ParseInt(attr.Value, 10, 64)
 						if err != nil {
 							// ignore invalid ref
 							continue NextToken
@@ -261,17 +261,18 @@ func setElemMetadata(attrs []xml.Attr, elem *element.OSMElem) {
 		switch attr.Name.Local {
 		case "version":
 			v, _ := strconv.ParseInt(attr.Value, 10, 64)
-			elem.Metadata.Version = int(v)
+			elem.Metadata.Version = int32(v)
 		case "uid":
 			v, _ := strconv.ParseInt(attr.Value, 10, 64)
-			elem.Metadata.UserId = int(v)
+			elem.Metadata.UserID = int32(v)
 		case "user":
 			elem.Metadata.UserName = attr.Value
 		case "changeset":
 			v, _ := strconv.ParseInt(attr.Value, 10, 64)
-			elem.Metadata.Changeset = int(v)
+			elem.Metadata.Changeset = v
 		case "timestamp":
-			elem.Metadata.Timestamp, _ = time.Parse(time.RFC3339, attr.Value)
+			ts, _ := time.Parse(time.RFC3339, attr.Value)
+			elem.Metadata.Timestamp = ts.Unix()
 		}
 	}
 }

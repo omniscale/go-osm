@@ -11,10 +11,17 @@ func readDenseNodes(
 	dense *osmpbf.DenseNodes,
 	block *osmpbf.PrimitiveBlock,
 	stringtable stringTable,
-	allNodes bool) (coords []element.Node, nodes []element.Node) {
+	allNodes bool,
+	includeMD bool) (coords []element.Node, nodes []element.Node) {
 
-	var lastId int64
+	var lastID int64
 	var lastLon, lastLat int64
+
+	var lastTimestamp int64
+	var lastChangeset int64
+	var lastUID int32
+	var lastUserSID int32
+
 	coords = make([]element.Node, len(dense.Id))
 	nodes = make([]element.Node, 0, len(dense.Id)/8)
 	granularity := int64(block.GetGranularity())
@@ -23,13 +30,30 @@ func readDenseNodes(
 	coordScale := 0.000000001
 	lastKeyValPos := 0
 
+	var metadata *element.Metadata
+
 	for i := range coords {
-		lastId += dense.Id[i]
+		lastID += dense.Id[i]
 		lastLon += dense.Lon[i]
 		lastLat += dense.Lat[i]
-		coords[i].Id = lastId
+		coords[i].ID = lastID
 		coords[i].Long = (coordScale * float64(lonOffset+(granularity*lastLon)))
 		coords[i].Lat = (coordScale * float64(latOffset+(granularity*lastLat)))
+
+		if includeMD {
+			lastTimestamp += dense.Denseinfo.Timestamp[i]
+			lastChangeset += dense.Denseinfo.Changeset[i]
+			lastUID += dense.Denseinfo.Uid[i]
+			lastUserSID += dense.Denseinfo.UserSid[i]
+
+			metadata = &element.Metadata{
+				Version:   dense.Denseinfo.Version[i],
+				Timestamp: lastTimestamp,
+				Changeset: lastChangeset,
+				UserID:    lastUID,
+				UserName:  stringtable[lastUserSID],
+			}
+		}
 		var tags map[string]string
 		addToNodes := allNodes
 		if stringtable != nil && len(dense.KeysVals) > 0 {
@@ -47,6 +71,7 @@ func readDenseNodes(
 		if addToNodes {
 			nd := coords[i]
 			nd.Tags = tags
+			nd.Metadata = metadata
 			nodes = append(nodes, nd)
 		}
 	}
@@ -92,7 +117,9 @@ func readNodes(
 	nodes []osmpbf.Node,
 	block *osmpbf.PrimitiveBlock,
 	stringtable stringTable,
-	allNodes bool) ([]element.Node, []element.Node) {
+	allNodes bool,
+	includeMD bool,
+) ([]element.Node, []element.Node) {
 
 	coords := make([]element.Node, len(nodes))
 	nds := make([]element.Node, 0, len(nodes)/8)
@@ -101,15 +128,30 @@ func readNodes(
 	lonOffset := block.GetLonOffset()
 	coordScale := 0.000000001
 
+	var metadata *element.Metadata
+
 	for i := range nodes {
 		id := nodes[i].Id
 		lon := nodes[i].Lon
 		lat := nodes[i].Lat
-		coords[i].Id = id
+		coords[i].ID = id
 		coords[i].Long = (coordScale * float64(lonOffset+(granularity*lon)))
 		coords[i].Lat = (coordScale * float64(latOffset+(granularity*lat)))
 		var tags map[string]string
 		addToNodes := allNodes
+		if includeMD {
+			version := int32(0)
+			if nodes[i].Info.Version != nil {
+				version = *nodes[i].Info.Version
+			}
+			metadata = &element.Metadata{
+				Version:   version,
+				Timestamp: nodes[i].Info.Timestamp,
+				Changeset: nodes[i].Info.Changeset,
+				UserID:    nodes[i].Info.Uid,
+				UserName:  stringtable[nodes[i].Info.UserSid],
+			}
+		}
 		if stringtable != nil {
 			tags = parseTags(stringtable, nodes[i].Keys, nodes[i].Vals)
 			if tags != nil {
@@ -122,6 +164,7 @@ func readNodes(
 		if addToNodes {
 			nd := coords[i]
 			nd.Tags = tags
+			nd.Metadata = metadata
 			nds = append(nds, nd)
 		}
 	}
@@ -142,15 +185,31 @@ func parseDeltaRefs(refs []int64) []int64 {
 func readWays(
 	ways []osmpbf.Way,
 	block *osmpbf.PrimitiveBlock,
-	stringtable stringTable) []element.Way {
+	stringtable stringTable,
+	includeMD bool,
+) []element.Way {
 
 	result := make([]element.Way, len(ways))
 
 	for i := range ways {
 		id := ways[i].Id
-		result[i].Id = id
+		result[i].ID = id
 		result[i].Tags = parseTags(stringtable, ways[i].Keys, ways[i].Vals)
 		result[i].Refs = parseDeltaRefs(ways[i].Refs)
+		if includeMD {
+			version := int32(0)
+			if ways[i].Info.Version != nil {
+				version = *ways[i].Info.Version
+			}
+			metadata := &element.Metadata{
+				Version:   version,
+				Timestamp: ways[i].Info.Timestamp,
+				Changeset: ways[i].Info.Changeset,
+				UserID:    ways[i].Info.Uid,
+				UserName:  stringtable[ways[i].Info.UserSid],
+			}
+			result[i].Metadata = metadata
+		}
 	}
 	return result
 }
@@ -158,10 +217,10 @@ func readWays(
 func parseRelationMembers(rel osmpbf.Relation, stringtable stringTable) []element.Member {
 	result := make([]element.Member, len(rel.Memids))
 
-	var lastId int64
+	var lastID int64
 	for i := range rel.Memids {
-		lastId += rel.Memids[i]
-		result[i].Id = lastId
+		lastID += rel.Memids[i]
+		result[i].ID = lastID
 		result[i].Role = stringtable[rel.RolesSid[i]]
 		result[i].Type = element.MemberType(rel.Types[i])
 	}
@@ -171,15 +230,31 @@ func parseRelationMembers(rel osmpbf.Relation, stringtable stringTable) []elemen
 func readRelations(
 	relations []osmpbf.Relation,
 	block *osmpbf.PrimitiveBlock,
-	stringtable stringTable) []element.Relation {
+	stringtable stringTable,
+	includeMD bool,
+) []element.Relation {
 
 	result := make([]element.Relation, len(relations))
 
 	for i := range relations {
 		id := relations[i].Id
-		result[i].Id = id
+		result[i].ID = id
 		result[i].Tags = parseTags(stringtable, relations[i].Keys, relations[i].Vals)
 		result[i].Members = parseRelationMembers(relations[i], stringtable)
+		if includeMD {
+			version := int32(0)
+			if relations[i].Info.Version != nil {
+				version = *relations[i].Info.Version
+			}
+			metadata := &element.Metadata{
+				Version:   version,
+				Timestamp: relations[i].Info.Timestamp,
+				Changeset: relations[i].Info.Changeset,
+				UserID:    relations[i].Info.Uid,
+				UserName:  stringtable[relations[i].Info.UserSid],
+			}
+			result[i].Metadata = metadata
+		}
 	}
 	return result
 }
