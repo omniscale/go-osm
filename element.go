@@ -2,6 +2,7 @@ package osm
 
 import (
 	"fmt"
+	"time"
 )
 
 // A Tags is a collection of key=values, describing the OSM element.
@@ -23,7 +24,7 @@ type Metadata struct {
 	UserID    int32
 	UserName  string
 	Version   int32
-	Timestamp int64
+	Timestamp time.Time
 	Changeset int64
 }
 

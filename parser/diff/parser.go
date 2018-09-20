@@ -229,8 +229,7 @@ func setElemMetadata(attrs []xml.Attr, elem *osm.OSMElem) {
 			v, _ := strconv.ParseInt(attr.Value, 10, 64)
 			elem.Metadata.Changeset = v
 		case "timestamp":
-			ts, _ := time.Parse(time.RFC3339, attr.Value)
-			elem.Metadata.Timestamp = ts.Unix()
+			elem.Metadata.Timestamp, _ = time.Parse(time.RFC3339, attr.Value)
 		}
 	}
 }

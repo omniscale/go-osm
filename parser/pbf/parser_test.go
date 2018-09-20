@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/omniscale/go-osm"
 )
@@ -421,7 +422,7 @@ func TestParseMetadata(t *testing.T) {
 						UserID:    378737,
 						UserName:  "Scrup",
 						Version:   5,
-						Timestamp: 1335970231,
+						Timestamp: time.Unix(1335970231, 0),
 						Changeset: 11480240,
 					},
 				},
@@ -438,7 +439,7 @@ func TestParseMetadata(t *testing.T) {
 						UserID:    378737,
 						UserName:  "Scrup",
 						Version:   8,
-						Timestamp: 1335884779,
+						Timestamp: time.Unix(1335884779, 0),
 						Changeset: 11470653,
 					},
 				},
@@ -465,7 +466,7 @@ func TestParseMetadata(t *testing.T) {
 						UserID:    852996,
 						UserName:  "Mg2",
 						Version:   7,
-						Timestamp: 1417551724,
+						Timestamp: time.Unix(1417551724, 0),
 						Changeset: 27187519,
 					},
 				},
@@ -481,7 +482,7 @@ func TestParseMetadata(t *testing.T) {
 						UserID:    393883,
 						UserName:  "fmalamaire",
 						Version:   9,
-						Timestamp: 1368522546,
+						Timestamp: time.Unix(1368522546, 0),
 						Changeset: 16122419,
 					},
 				},
@@ -507,7 +508,7 @@ func TestParseMetadata(t *testing.T) {
 						UserID:    110263,
 						UserName:  "werner2101",
 						Version:   2,
-						Timestamp: 1298228849,
+						Timestamp: time.Unix(1298228849, 0),
 						Changeset: 7346501,
 					},
 				},

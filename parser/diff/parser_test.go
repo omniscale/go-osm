@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/kr/pretty"
 	"github.com/omniscale/go-osm"
@@ -59,7 +60,7 @@ func TestParse(t *testing.T) {
 					OSMElem: osm.OSMElem{
 						ID:       25594547,
 						Tags:     osm.Tags{"source": "SRTM"},
-						Metadata: &osm.Metadata{UserID: 462835, UserName: "G-eMapper", Version: 3, Timestamp: 1480688111, Changeset: 44115151},
+						Metadata: &osm.Metadata{UserID: 462835, UserName: "G-eMapper", Version: 3, Timestamp: time.Date(2016, 12, 2, 14, 15, 11, 0, time.UTC), Changeset: 44115151},
 					},
 					Lat:  16.187913,
 					Long: 122.0913159,
@@ -76,7 +77,7 @@ func TestParse(t *testing.T) {
 				Node: &osm.Node{
 					OSMElem: osm.OSMElem{
 						ID:       1884933281,
-						Metadata: &osm.Metadata{UserID: 3315483, UserName: "8dirfriend", Version: 2, Timestamp: 1480688110, Changeset: 44115150},
+						Metadata: &osm.Metadata{UserID: 3315483, UserName: "8dirfriend", Version: 2, Timestamp: time.Date(2016, 12, 2, 14, 15, 10, 0, time.UTC), Changeset: 44115150},
 					},
 					Lat:  35.0233546,
 					Long: 132.879755,
@@ -94,7 +95,7 @@ func TestParse(t *testing.T) {
 					OSMElem: osm.OSMElem{
 						ID:       4533952893,
 						Tags:     osm.Tags{"amenity": "hospital", "name": "Кожно-венерологический диспансер", "name:ru": "Кожно-венерологический диспансер"},
-						Metadata: &osm.Metadata{UserID: 4112953, UserName: "Sergei97", Version: 1, Timestamp: 1480688119, Changeset: 44115157},
+						Metadata: &osm.Metadata{UserID: 4112953, UserName: "Sergei97", Version: 1, Timestamp: time.Date(2016, 12, 2, 14, 15, 19, 0, time.UTC), Changeset: 44115157},
 					},
 					Lat:  52.563681,
 					Long: 24.4658314,
@@ -112,7 +113,7 @@ func TestParse(t *testing.T) {
 					OSMElem: osm.OSMElem{
 						ID:       6863685,
 						Tags:     osm.Tags{"highway": "unclassified", "maxspeed": "30", "name": "Oranjestraat", "oneway": "yes", "cycleway": "opposite"},
-						Metadata: &osm.Metadata{UserID: 619707, UserName: "openMvD", Version: 6, Timestamp: 1480688106, Changeset: 44115110},
+						Metadata: &osm.Metadata{UserID: 619707, UserName: "openMvD", Version: 6, Timestamp: time.Date(2016, 12, 2, 14, 15, 6, 0, time.UTC), Changeset: 44115110},
 					},
 					Refs:  []int64{44776397, 44776575, 4534010578, 44776865, 4534010576, 44780387},
 					Nodes: nil,
@@ -129,7 +130,7 @@ func TestParse(t *testing.T) {
 					OSMElem: osm.OSMElem{
 						ID:       2139646,
 						Tags:     osm.Tags{"destination": "Balonne River", "name": "Condamine River", "type": "waterway", "waterway": "river", "wikidata": "Q805500", "wikipedia": "en:Condamine River"},
-						Metadata: &osm.Metadata{UserID: 1185091, UserName: "nick0252", Version: 13, Timestamp: 1480688132, Changeset: 44115162},
+						Metadata: &osm.Metadata{UserID: 1185091, UserName: "nick0252", Version: 13, Timestamp: time.Date(2016, 12, 2, 14, 15, 32, 0, time.UTC), Changeset: 44115162},
 					},
 					Members: []osm.Member{
 						{ID: 142320051, Type: 1, Role: "main_stream"},

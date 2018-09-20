@@ -1,6 +1,8 @@
 package pbf
 
 import (
+	"time"
+
 	"github.com/omniscale/go-osm"
 	"github.com/omniscale/go-osm/parser/pbf/internal/osmpbf"
 )
@@ -48,7 +50,7 @@ func readDenseNodes(
 
 			metadata = &osm.Metadata{
 				Version:   dense.Denseinfo.Version[i],
-				Timestamp: lastTimestamp,
+				Timestamp: time.Unix(lastTimestamp, 0),
 				Changeset: lastChangeset,
 				UserID:    lastUID,
 				UserName:  stringtable[lastUserSID],
@@ -147,7 +149,7 @@ func readNodes(
 			}
 			metadata = &osm.Metadata{
 				Version:   version,
-				Timestamp: nodes[i].Info.Timestamp,
+				Timestamp: time.Unix(nodes[i].Info.Timestamp, 0),
 				Changeset: nodes[i].Info.Changeset,
 				UserID:    nodes[i].Info.Uid,
 				UserName:  stringtable[nodes[i].Info.UserSid],
@@ -204,7 +206,7 @@ func readWays(
 			}
 			metadata := &osm.Metadata{
 				Version:   version,
-				Timestamp: ways[i].Info.Timestamp,
+				Timestamp: time.Unix(ways[i].Info.Timestamp, 0),
 				Changeset: ways[i].Info.Changeset,
 				UserID:    ways[i].Info.Uid,
 				UserName:  stringtable[ways[i].Info.UserSid],
@@ -249,7 +251,7 @@ func readRelations(
 			}
 			metadata := &osm.Metadata{
 				Version:   version,
-				Timestamp: relations[i].Info.Timestamp,
+				Timestamp: time.Unix(relations[i].Info.Timestamp, 0),
 				Changeset: relations[i].Info.Changeset,
 				UserID:    relations[i].Info.Uid,
 				UserName:  stringtable[relations[i].Info.UserSid],
