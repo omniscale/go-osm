@@ -23,7 +23,12 @@ func readDenseNodes(
 	var lastUserSID int32
 
 	coords = make([]osm.Node, len(dense.Id))
-	nodes = make([]osm.Node, 0, len(dense.Id)/8)
+	if allNodes {
+		nodes = make([]osm.Node, 0, len(dense.Id))
+	} else {
+		// most nodes have no tags
+		nodes = make([]osm.Node, 0, len(dense.Id)/8)
+	}
 	granularity := int64(block.GetGranularity())
 	latOffset := block.GetLatOffset()
 	lonOffset := block.GetLonOffset()
