@@ -7,8 +7,6 @@ import (
 	"github.com/omniscale/go-osm/parser/pbf/internal/osmpbf"
 )
 
-const coord_factor float64 = 11930464.7083 // ((2<<31)-1)/360.0
-
 func readDenseNodes(
 	dense *osmpbf.DenseNodes,
 	block *osmpbf.PrimitiveBlock,
