@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"compress/zlib"
 	structs "encoding/binary"
-	"fmt"
 	"io"
 	"log"
 	"time"
@@ -14,19 +13,6 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/omniscale/go-osm/parser/pbf/internal/osmpbf"
 )
-
-type parserError struct {
-	message       string
-	originalError error
-}
-
-func (e *parserError) Error() string {
-	return fmt.Sprintf("%s: %v", e.message, e.originalError)
-}
-
-func newParserError(message string, err error) *parserError {
-	return &parserError{message, err}
-}
 
 var supportedFeatured = map[string]bool{"OsmSchema-V0.6": true, "DenseNodes": true}
 
@@ -38,7 +24,7 @@ func decodeRawBlob(raw []byte) ([]byte, error) {
 
 	err := proto.Unmarshal(raw, blob)
 	if err != nil {
-		return nil, newParserError("unmarshaling blob", err)
+		return nil, errors.Wrap(err, "unmarshaling blob")
 	}
 
 	// pbf contains (uncompressed) raw or zlibdata
@@ -47,12 +33,12 @@ func decodeRawBlob(raw []byte) ([]byte, error) {
 		buf := bytes.NewBuffer(blob.GetZlibData())
 		r, err := zlib.NewReader(buf)
 		if err != nil {
-			return nil, newParserError("zlib error", err)
+			return nil, errors.Wrap(err, "start uncompressing ZLibData")
 		}
 		b = make([]byte, blob.GetRawSize())
 		_, err = io.ReadFull(r, b)
 		if err != nil {
-			return nil, newParserError("zlib read error", err)
+			return nil, errors.Wrap(err, "uncompressing ZLibData")
 		}
 	}
 	return b, nil
