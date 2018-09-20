@@ -17,6 +17,7 @@ import (
 type Parser struct {
 	reader io.Reader
 	conf   Config
+	err    error
 }
 
 type Config struct {
@@ -46,7 +47,22 @@ func NewGZIP(r io.Reader, conf Config) (*Parser, error) {
 	return New(r, conf), nil
 }
 
-func (p *Parser) Parse(ctx context.Context) error {
+// Error returns the first error that occurred during Parse calls.
+func (p *Parser) Error() error {
+	return p.err
+}
+
+func (p *Parser) Parse(ctx context.Context) (err error) {
+	if p.err != nil {
+		return err
+	}
+
+	defer func() {
+		if err != nil {
+			p.err = err
+		}
+	}()
+
 	if !p.conf.KeepOpen {
 		defer func() {
 			if p.conf.Diffs != nil {

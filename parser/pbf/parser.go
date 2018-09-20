@@ -75,6 +75,7 @@ type Parser struct {
 	wg      sync.WaitGroup
 	waySync *barrier
 	relSync *barrier
+	err     error
 }
 
 // New creates a new PBF parser for the provided input. Config specifies the destinations for the parsed elements.
@@ -102,18 +103,35 @@ func New(r io.Reader, conf Config) *Parser {
 // Header returns the header information from the PBF. Can be called before or
 // after Parse().
 func (p *Parser) Header() (*Header, error) {
+	if p.err != nil {
+		return nil, p.err
+	}
 	if p.header == nil {
-		if err := p.parseHeader(); err != nil {
-			return nil, err
+		if p.err = p.parseHeader(); p.err != nil {
+			return nil, p.err
 		}
 	}
 	return p.header, nil
 }
 
+// Error returns the first error that occurred during Header/Parse calls.
+func (p *Parser) Error() error {
+	return p.err
+}
+
 // Parse parses the PBF file and sends the parsed nodes, ways and relations
 // into the channels provided to the Parsers Config.
 // Context can be used to cancel the parsing.
-func (p *Parser) Parse(ctx context.Context) error {
+func (p *Parser) Parse(ctx context.Context) (err error) {
+	if p.err != nil {
+		return err
+	}
+
+	defer func() {
+		if err != nil {
+			p.err = err
+		}
+	}()
 	if p.header == nil {
 		if err := p.parseHeader(); err != nil {
 			return err

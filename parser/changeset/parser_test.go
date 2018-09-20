@@ -3,7 +3,6 @@ package changeset
 import (
 	"context"
 	"os"
-	"sync"
 	"testing"
 
 	osm "github.com/omniscale/go-osm"
@@ -23,22 +22,16 @@ func TestParse(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	go p.Parse(context.Background())
 
 	changes := []osm.Changeset{}
-	wg := sync.WaitGroup{}
-	wg.Add(1)
-	go func() {
-		for ch := range conf.Changesets {
-			changes = append(changes, ch)
-		}
-		wg.Done()
-	}()
-	err = p.Parse(context.Background())
-	if err != nil {
-		t.Fatal(err)
+	for ch := range conf.Changesets {
+		changes = append(changes, ch)
 	}
 
-	wg.Wait()
+	if err := p.Error(); err != nil {
+		t.Error(err)
+	}
 
 	if n := len(changes); n != 27 {
 		t.Error("expected 27 changes, got", n)
