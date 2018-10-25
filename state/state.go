@@ -14,7 +14,6 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/omniscale/go-osm/parser/pbf"
-	"github.com/omniscale/imposm3/log"
 )
 
 type DiffState struct {
@@ -101,6 +100,8 @@ func ParseFile(stateFile string) (*DiffState, error) {
 	return Parse(f)
 }
 
+// Parse parses an INI style state.txt file.
+// timestamp is required, sequenceNumber and replicationUrl can be empty.
 func Parse(f io.Reader) (*DiffState, error) {
 	values, err := parseSimpleIni(f)
 	if err != nil {
@@ -157,7 +158,6 @@ func parseTimeStamp(value string) (time.Time, error) {
 
 func parseSequence(value string) (int, error) {
 	if value == "" {
-		log.Println("[warn] missing sequenceNumber in state file")
 		return 0, nil
 	}
 	val, err := strconv.ParseInt(value, 10, 32)

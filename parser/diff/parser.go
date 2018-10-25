@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/xml"
 	"io"
-	"log"
 	"strconv"
 	"time"
 
@@ -179,7 +178,7 @@ NextToken:
 			case "osmChange":
 				// pass
 			default:
-				log.Println("unhandled XML tag ", tok.Name.Local, " in OSC")
+				// unhandled XML tag, pass
 			}
 		case xml.EndElement:
 			var e osm.Diff

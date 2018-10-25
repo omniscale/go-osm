@@ -5,7 +5,6 @@ import (
 	"compress/zlib"
 	structs "encoding/binary"
 	"io"
-	"log"
 	"time"
 
 	"github.com/pkg/errors"
@@ -47,7 +46,7 @@ func decodeRawBlob(raw []byte) ([]byte, error) {
 func decodePrimitiveBlock(blob []byte) (*osmpbf.PrimitiveBlock, error) {
 	b, err := decodeRawBlob(blob)
 	if err != nil {
-		log.Panic(err)
+		return nil, errors.Wrap(err, "decoding raw blob")
 	}
 	block := &osmpbf.PrimitiveBlock{}
 	if err = proto.Unmarshal(b, block); err != nil {
