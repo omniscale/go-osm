@@ -35,6 +35,16 @@ func Example() {
 	// Iterate all diffs as they are downloaded
 	downloaded := 0
 	for seq := range dl.Sequences() {
+
+		if seq.Error != nil {
+			// Error is set if an error occurred during download (network issues, etc.).
+			// Filename and Time is not set, but you can access the Sequence and Error.
+			log.Printf("error while downloading diff #%d: %s", seq.Sequence, seq.Error)
+			// The downloader automatically retries after a short delay, so we
+			// can just continue.
+			continue
+		}
+
 		downloaded++
 
 		// seq contains the Filename of the downloaded diff file. You can use parser/diff to parse the content.

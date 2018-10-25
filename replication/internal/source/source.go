@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net"
 	"net/http"
 	"os"
@@ -15,9 +16,15 @@ import (
 	"gopkg.in/fsnotify.v1"
 
 	"github.com/omniscale/go-osm/replication"
-	"github.com/omniscale/imposm3"
-	"github.com/omniscale/imposm3/log"
 )
+
+var isDebug = false
+
+func debug(v ...interface{}) {
+	if isDebug {
+		log.Println(v...)
+	}
+}
 
 type NotAvailable struct {
 	url string
@@ -69,10 +76,10 @@ func NewDownloader(dest, url string, seq int, interval time.Duration) *downloade
 	}
 
 	var naWaittime time.Duration
-	switch interval {
-	case 24 * time.Hour:
+	switch {
+	case interval >= 24*time.Hour:
 		naWaittime = 5 * time.Minute
-	case time.Hour:
+	case interval >= time.Hour:
 		naWaittime = 60 * time.Second
 	default:
 		naWaittime = 10 * time.Second
@@ -102,7 +109,7 @@ func (d *downloader) Sequences() <-chan replication.Sequence {
 func (d *downloader) download(seq int, ext string) error {
 	dest := path.Join(d.dest, seqPath(seq)+ext)
 	url := d.baseUrl + seqPath(seq) + ext
-	log.Println("[debug] Downloading diff file from ", url)
+	debug("[debug] Downloading diff file from ", url)
 
 	if _, err := os.Stat(dest); err == nil {
 		return nil
@@ -123,7 +130,7 @@ func (d *downloader) download(seq int, ext string) error {
 	if err != nil {
 		return err
 	}
-	req.Header.Set("User-Agent", "Imposm "+imposm3.Version)
+	req.Header.Set("User-Agent", "github.com/omniscale/go-osm")
 	resp, err := d.client.Do(req)
 	if err != nil {
 		return err
@@ -154,7 +161,6 @@ func (d *downloader) download(seq int, ext string) error {
 }
 
 func (d *downloader) downloadTillSuccess(ctx context.Context, seq int, ext string) {
-	errCount := 0
 	for {
 		if ctx.Err() != nil {
 			return
@@ -163,15 +169,14 @@ func (d *downloader) downloadTillSuccess(ctx context.Context, seq int, ext strin
 		if err == nil {
 			break
 		}
-		errCount++
 		if err, ok := err.(*NotAvailable); ok {
-			log.Println("[debug] File not found/available:", err.url)
 			wait(ctx, d.naWaittime)
-		} else if errCount == 1 {
-			log.Println("[warn] Downloading file:", err)
-			wait(ctx, d.errWaittime)
 		} else {
-			log.Println("[error] Downloading file:", err)
+			debug("[error] Downloading file:", err)
+			d.sequences <- replication.Sequence{
+				Sequence: seq,
+				Error:    err,
+			}
 			wait(ctx, d.errWaittime)
 		}
 	}
@@ -197,7 +202,7 @@ func (d *downloader) fetchNextLoop() {
 	lastTime, err := d.StateTime(stateFile)
 	for {
 		nextSeq := d.lastSequence + 1
-		log.Println("[debug] Processing download for sequence", nextSeq)
+		debug("[debug] Processing download for sequence", nextSeq)
 		if err == nil {
 			nextDiffTime := lastTime.Add(d.interval)
 			if nextDiffTime.After(time.Now()) {
@@ -205,7 +210,7 @@ func (d *downloader) fetchNextLoop() {
 				// wait till last diff time + interval, before fetching next
 				nextDiffTime = lastTime.Add(d.interval + 2*time.Second /* allow small time diff between servers */)
 				waitFor := nextDiffTime.Sub(time.Now())
-				log.Println("[debug] Waiting for next download in", waitFor)
+				debug("[debug] Waiting for next download in", waitFor)
 				wait(d.ctx, waitFor)
 			}
 		}
@@ -236,6 +241,7 @@ type reader struct {
 	StateExt     string
 	lastSequence int
 	StateTime    func(string) (time.Time, error)
+	errWaittime  time.Duration
 	sequences    chan replication.Sequence
 	ctx          context.Context
 	cancel       context.CancelFunc
@@ -247,6 +253,7 @@ func NewReader(dest string, seq int) *reader {
 		dest:         dest,
 		lastSequence: seq,
 		sequences:    make(chan replication.Sequence, 1),
+		errWaittime:  60 * time.Second,
 		ctx:          ctx,
 		cancel:       cancel,
 	}
@@ -275,11 +282,19 @@ func (d *reader) fetchNextLoop() {
 	for {
 		nextSeq := d.lastSequence + 1
 		if err := d.waitTillPresent(d.ctx, nextSeq, d.StateExt); err != nil {
-			log.Println("[warn] Waiting for state file:", err)
+			d.sequences <- replication.Sequence{
+				Sequence: nextSeq,
+				Error:    err,
+			}
+			wait(d.ctx, d.errWaittime)
 			continue
 		}
 		if err := d.waitTillPresent(d.ctx, nextSeq, d.FileExt); err != nil {
-			log.Println("[warn] Waiting for diff file:", err)
+			d.sequences <- replication.Sequence{
+				Sequence: nextSeq,
+				Error:    err,
+			}
+			wait(d.ctx, d.errWaittime)
 			continue
 		}
 		if d.ctx.Err() != nil {

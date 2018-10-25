@@ -7,6 +7,7 @@ type Sequence struct {
 	StateFilename string
 	Time          time.Time
 	Sequence      int
+	Error         error
 }
 
 type Source interface {
