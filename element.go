@@ -81,7 +81,7 @@ type Member struct {
 	// Node points to the actual Node, if Type is NodeMember.
 	// Can be nil if the information is not available (e.g. during parsing).
 	Node *Node
-	// Elem points to the base information valid for all member types.
+	// Element points to the base information valid for all member types.
 	// Can be nil if the information is not available (e.g. during parsing).
-	Elem *Element
+	Element *Element
 }
