@@ -12,8 +12,8 @@ func (t *Tags) String() string {
 	return fmt.Sprintf("%v", (map[string]string)(*t))
 }
 
-// An OSMElem contains information for nodes, ways and relations.
-type OSMElem struct {
+// An Element contains information for nodes, ways and relations.
+type Element struct {
 	ID       int64
 	Tags     Tags
 	Metadata *Metadata
@@ -30,14 +30,14 @@ type Metadata struct {
 
 // A Node contains lat/long coordinates.
 type Node struct {
-	OSMElem
+	Element
 	Lat  float64
 	Long float64
 }
 
 // A Way references one or more nodes by IDs.
 type Way struct {
-	OSMElem
+	Element
 	// Refs specifies an ordered list of all node IDs that define this way.
 	Refs []int64
 	// Nodes specifies an ordered list of the actual nodes. Nodes can be empty
@@ -53,14 +53,14 @@ func (w *Way) IsClosed() bool {
 type MemberType int
 
 const (
-	NODE     MemberType = 0
-	WAY                 = 1
-	RELATION            = 2
+	NodeMember     MemberType = 0
+	WayMember                 = 1
+	RelationMember            = 2
 )
 
 // A Relation is a collection of multiple members.
 type Relation struct {
-	OSMElem
+	Element
 	Members []Member
 }
 
@@ -78,10 +78,10 @@ type Member struct {
 	// Way points to the actual Way, if Type is Way.
 	// Can be nil if the information is not available (e.g. during parsing).
 	Way *Way
-	// Node points to the actual Node, if Type is NODE.
+	// Node points to the actual Node, if Type is NodeMember.
 	// Can be nil if the information is not available (e.g. during parsing).
 	Node *Node
 	// Elem points to the base information valid for all member types.
 	// Can be nil if the information is not available (e.g. during parsing).
-	Elem *OSMElem
+	Elem *Element
 }

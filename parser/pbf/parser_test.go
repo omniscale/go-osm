@@ -416,7 +416,7 @@ func TestParseMetadata(t *testing.T) {
 	}{
 		{Idx: 0,
 			Want: osm.Node{
-				OSMElem: osm.OSMElem{
+				Element: osm.Element{
 					ID: 21911863,
 					Metadata: &osm.Metadata{
 						UserID:    378737,
@@ -432,7 +432,7 @@ func TestParseMetadata(t *testing.T) {
 		},
 		{Idx: 2,
 			Want: osm.Node{
-				OSMElem: osm.OSMElem{
+				Element: osm.Element{
 					ID:   21911886,
 					Tags: osm.Tags{"crossing_ref": "zebra", "highway": "crossing"},
 					Metadata: &osm.Metadata{
@@ -459,7 +459,7 @@ func TestParseMetadata(t *testing.T) {
 	}{
 		{Idx: 0,
 			Want: osm.Way{
-				OSMElem: osm.OSMElem{
+				Element: osm.Element{
 					ID:   4097656,
 					Tags: osm.Tags{"highway": "primary", "name": "Avenue Princesse Alice", "oneway": "yes"},
 					Metadata: &osm.Metadata{
@@ -475,7 +475,7 @@ func TestParseMetadata(t *testing.T) {
 		},
 		{Idx: 2,
 			Want: osm.Way{
-				OSMElem: osm.OSMElem{
+				Element: osm.Element{
 					ID:   4224972,
 					Tags: osm.Tags{"name": "Avenue des Papalins", "oneway": "yes", "highway": "residential"},
 					Metadata: &osm.Metadata{
@@ -501,7 +501,7 @@ func TestParseMetadata(t *testing.T) {
 	}{
 		{Idx: 26,
 			Want: osm.Relation{
-				OSMElem: osm.OSMElem{
+				Element: osm.Element{
 					ID:   1369631,
 					Tags: osm.Tags{"type": "multipolygon"},
 					Metadata: &osm.Metadata{

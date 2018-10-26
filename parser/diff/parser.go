@@ -115,7 +115,7 @@ NextToken:
 					}
 				}
 				if p.conf.IncludeMetadata {
-					setElemMetadata(tok.Attr, &node.OSMElem)
+					setElemMetadata(tok.Attr, &node.Element)
 				}
 			case "way":
 				for _, attr := range tok.Attr {
@@ -124,7 +124,7 @@ NextToken:
 					}
 				}
 				if p.conf.IncludeMetadata {
-					setElemMetadata(tok.Attr, &way.OSMElem)
+					setElemMetadata(tok.Attr, &way.Element)
 				}
 			case "relation":
 				for _, attr := range tok.Attr {
@@ -133,7 +133,7 @@ NextToken:
 					}
 				}
 				if p.conf.IncludeMetadata {
-					setElemMetadata(tok.Attr, &rel.OSMElem)
+					setElemMetadata(tok.Attr, &rel.Element)
 				}
 			case "nd":
 				for _, attr := range tok.Attr {
@@ -228,7 +228,7 @@ NextToken:
 	return nil
 }
 
-func setElemMetadata(attrs []xml.Attr, elem *osm.OSMElem) {
+func setElemMetadata(attrs []xml.Attr, elem *osm.Element) {
 	elem.Metadata = &osm.Metadata{}
 	for _, attr := range attrs {
 		switch attr.Name.Local {
@@ -250,7 +250,7 @@ func setElemMetadata(attrs []xml.Attr, elem *osm.OSMElem) {
 }
 
 var memberTypeValues = map[string]osm.MemberType{
-	"node":     osm.NODE,
-	"way":      osm.WAY,
-	"relation": osm.RELATION,
+	"node":     osm.NodeMember,
+	"way":      osm.WayMember,
+	"relation": osm.RelationMember,
 }

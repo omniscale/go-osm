@@ -57,7 +57,7 @@ func TestParse(t *testing.T) {
 				Modify: true,
 				Delete: false,
 				Node: &osm.Node{
-					OSMElem: osm.OSMElem{
+					Element: osm.Element{
 						ID:       25594547,
 						Tags:     osm.Tags{"source": "SRTM"},
 						Metadata: &osm.Metadata{UserID: 462835, UserName: "G-eMapper", Version: 3, Timestamp: time.Date(2016, 12, 2, 14, 15, 11, 0, time.UTC), Changeset: 44115151},
@@ -75,7 +75,7 @@ func TestParse(t *testing.T) {
 				Modify: false,
 				Delete: true,
 				Node: &osm.Node{
-					OSMElem: osm.OSMElem{
+					Element: osm.Element{
 						ID:       1884933281,
 						Metadata: &osm.Metadata{UserID: 3315483, UserName: "8dirfriend", Version: 2, Timestamp: time.Date(2016, 12, 2, 14, 15, 10, 0, time.UTC), Changeset: 44115150},
 					},
@@ -92,7 +92,7 @@ func TestParse(t *testing.T) {
 				Modify: false,
 				Delete: false,
 				Node: &osm.Node{
-					OSMElem: osm.OSMElem{
+					Element: osm.Element{
 						ID:       4533952893,
 						Tags:     osm.Tags{"amenity": "hospital", "name": "Кожно-венерологический диспансер", "name:ru": "Кожно-венерологический диспансер"},
 						Metadata: &osm.Metadata{UserID: 4112953, UserName: "Sergei97", Version: 1, Timestamp: time.Date(2016, 12, 2, 14, 15, 19, 0, time.UTC), Changeset: 44115157},
@@ -110,7 +110,7 @@ func TestParse(t *testing.T) {
 				Modify: true,
 				Delete: false,
 				Way: &osm.Way{
-					OSMElem: osm.OSMElem{
+					Element: osm.Element{
 						ID:       6863685,
 						Tags:     osm.Tags{"highway": "unclassified", "maxspeed": "30", "name": "Oranjestraat", "oneway": "yes", "cycleway": "opposite"},
 						Metadata: &osm.Metadata{UserID: 619707, UserName: "openMvD", Version: 6, Timestamp: time.Date(2016, 12, 2, 14, 15, 6, 0, time.UTC), Changeset: 44115110},
@@ -127,7 +127,7 @@ func TestParse(t *testing.T) {
 				Modify: true,
 				Delete: false,
 				Rel: &osm.Relation{
-					OSMElem: osm.OSMElem{
+					Element: osm.Element{
 						ID:       2139646,
 						Tags:     osm.Tags{"destination": "Balonne River", "name": "Condamine River", "type": "waterway", "waterway": "river", "wikidata": "Q805500", "wikipedia": "en:Condamine River"},
 						Metadata: &osm.Metadata{UserID: 1185091, UserName: "nick0252", Version: 13, Timestamp: time.Date(2016, 12, 2, 14, 15, 32, 0, time.UTC), Changeset: 44115162},
