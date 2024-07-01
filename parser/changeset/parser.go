@@ -4,11 +4,11 @@ import (
 	"compress/gzip"
 	"context"
 	"encoding/xml"
+	"fmt"
 	"io"
 
 	"github.com/omniscale/go-osm"
 	"github.com/omniscale/go-osm/parser/changeset/internal/osmxml"
-	"github.com/pkg/errors"
 )
 
 type Parser struct {
@@ -66,7 +66,7 @@ func (p *Parser) Parse(ctx context.Context) (err error) {
 	dec := xml.NewDecoder(p.reader)
 	cf := osmxml.ChangeFile{}
 	if err := dec.Decode(&cf); err != nil {
-		return errors.Wrap(err, "decoding changes file")
+		return fmt.Errorf("decoding changes file: %w", err)
 	}
 
 	for _, ch := range cf.Changes {
