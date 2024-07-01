@@ -2,13 +2,13 @@ package diff
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"reflect"
 	"sync"
 	"testing"
 	"time"
 
-	"github.com/kr/pretty"
 	"github.com/omniscale/go-osm"
 )
 
@@ -161,7 +161,7 @@ func TestParse(t *testing.T) {
 	} {
 		t.Run(tc.Name, func(t *testing.T) {
 			if !reflect.DeepEqual(diffs[tc.Idx], tc.Want) {
-				pretty.Println(diffs[tc.Idx])
+				fmt.Printf("%#v\n", diffs[tc.Idx])
 				t.Errorf("unexpected diff, got:\n%#v\nwant:\n%#v", diffs[tc.Idx], tc.Want)
 			}
 		})
